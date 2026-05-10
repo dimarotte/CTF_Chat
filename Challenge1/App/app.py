@@ -69,7 +69,8 @@ def register():
         else:
             db.session.add(User(username=username, password=password))
             db.session.commit()
-            return redirect(url_for("login"))
+            session["user"] = username
+            return redirect(url_for("chat"))
 
     return render_template("register.html", error=error)
 
