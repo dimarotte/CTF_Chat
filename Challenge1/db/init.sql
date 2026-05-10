@@ -3,3 +3,11 @@ CREATE TABLE IF NOT EXISTS users (
   username VARCHAR(64) NOT NULL,
   password VARCHAR(64) NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    users VARCHAR(100),
+    author VARCHAR(100),
+    text TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

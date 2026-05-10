@@ -1,411 +1,440 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <title>Chat</title>
-        <style>
-            * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-            }
 
-            body {
-                font-family: monospace;
-                background: #2b2b2b;
-                color: #cccccc;
-                display: flex;
-                height: 100vh;
-                overflow: hidden;
-            }
+<head>
+    <meta charset="UTF-8" />
+    <title>Chat</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-            /* Sidebar */
-            .sidebar {
-                width: 240px;
-                background: #1e1e1e;
-                border-right: 1px solid #3a3a3a;
-                display: flex;
-                flex-direction: column;
-            }
+        body {
+            font-family: monospace;
+            background: #2b2b2b;
+            color: #cccccc;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-            .sidebar-header {
-                padding: 1rem;
-                border-bottom: 1px solid #3a3a3a;
-                font-size: 0.85rem;
-                color: #888888;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-            }
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            background: #1e1e1e;
+            border-right: 1px solid #3a3a3a;
+            display: flex;
+            flex-direction: column;
+        }
 
-            .dm-list {
-                flex: 1;
-                overflow-y: auto;
-                padding: 0.5rem 0;
-            }
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid #3a3a3a;
+            font-size: 0.85rem;
+            color: #888888;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
 
-            .dm-item {
-                padding: 0.5rem 1rem;
-                font-size: 0.9rem;
-                cursor: pointer;
-                border-radius: 2px;
-                color: #888888;
-            }
+        .dm-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem 0;
+        }
 
-            .dm-item:hover {
-                background: #2b2b2b;
-                color: #cccccc;
-            }
+        .dm-item {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-radius: 2px;
+            color: #888888;
+        }
 
-            .dm-item.active {
-                background: #333333;
-                color: #cccccc;
-            }
+        .dm-item:hover {
+            background: #2b2b2b;
+            color: #cccccc;
+        }
 
-            .new-dm-btn {
-                margin: 0.75rem;
-                padding: 0.5rem;
-                background: #cccccc;
-                color: #1a1a1a;
-                border: none;
-                font-family: monospace;
-                font-size: 0.85rem;
-                font-weight: bold;
-                cursor: pointer;
-                width: calc(100% - 1.5rem);
-            }
+        .dm-item.active {
+            background: #333333;
+            color: #cccccc;
+        }
 
-            .new-dm-btn:hover {
-                background: #e0e0e0;
-            }
+        .new-dm-btn {
+            margin: 0.75rem;
+            padding: 0.5rem;
+            background: #cccccc;
+            color: #1a1a1a;
+            border: none;
+            font-family: monospace;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: calc(100% - 1.5rem);
+        }
 
-            .user-bar {
-                padding: 0.75rem 1rem;
-                border-top: 1px solid #3a3a3a;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                font-size: 0.85rem;
-            }
+        .new-dm-btn:hover {
+            background: #e0e0e0;
+        }
 
-            .user-bar .username {
-                color: #cccccc;
-                font-weight: bold;
-            }
+        .user-bar {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid #3a3a3a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+        }
 
-            .user-bar a {
-                color: #666666;
-                text-decoration: none;
-                font-size: 0.75rem;
-            }
+        .user-bar .username {
+            color: #cccccc;
+            font-weight: bold;
+        }
 
-            .user-bar a:hover {
-                color: #cccccc;
-            }
+        .user-bar a {
+            color: #666666;
+            text-decoration: none;
+            font-size: 0.75rem;
+        }
 
-            /* Main area */
-            .main {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-            }
+        .user-bar a:hover {
+            color: #cccccc;
+        }
 
-            .main-empty {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                color: #555555;
-                font-size: 0.9rem;
-                gap: 0.5rem;
-            }
+        /* Main area */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
 
-            .chat-header {
-                padding: 0.85rem 1.25rem;
-                border-bottom: 1px solid #3a3a3a;
-                font-size: 0.9rem;
-                color: #888888;
-            }
+        .main-empty {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #555555;
+            font-size: 0.9rem;
+            gap: 0.5rem;
+        }
 
-            .chat-header strong {
-                color: #cccccc;
-            }
+        .chat-header {
+            padding: 0.85rem 1.25rem;
+            border-bottom: 1px solid #3a3a3a;
+            font-size: 0.9rem;
+            color: #888888;
+        }
 
-            .messages {
-                flex: 1;
-                overflow-y: auto;
-                padding: 1rem 1.25rem;
-                display: flex;
-                flex-direction: column;
-                gap: 0.5rem;
-            }
+        .chat-header strong {
+            color: #cccccc;
+        }
 
-            .message {
-                display: flex;
-                flex-direction: column;
-                gap: 0.15rem;
-                max-width: 60%;
-            }
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
 
-            .message.mine {
-                align-self: flex-end;
-                align-items: flex-end;
-            }
+        .message {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            max-width: 60%;
+        }
 
-            .message.theirs {
-                align-self: flex-start;
-                align-items: flex-start;
-            }
+        .message.mine {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
 
-            .message-author {
-                font-size: 0.72rem;
-                color: #666666;
-            }
+        .message.theirs {
+            align-self: flex-start;
+            align-items: flex-start;
+        }
 
-            .message-bubble {
-                padding: 0.4rem 0.75rem;
-                font-size: 0.88rem;
-                line-height: 1.4;
-            }
+        .message-author {
+            font-size: 0.72rem;
+            color: #666666;
+        }
 
-            .message.mine .message-bubble {
-                background: #3a3a3a;
-                color: #cccccc;
-            }
+        .message-bubble {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.88rem;
+            line-height: 1.4;
+        }
 
-            .message.theirs .message-bubble {
-                background: #2f2f2f;
-                color: #aaaaaa;
-                border: 1px solid #3a3a3a;
-            }
+        .message.mine .message-bubble {
+            background: #3a3a3a;
+            color: #cccccc;
+        }
 
-            .input-bar {
-                padding: 0.75rem 1.25rem;
-                border-top: 1px solid #3a3a3a;
-                display: flex;
-                gap: 0.5rem;
-            }
+        .message.theirs .message-bubble {
+            background: #2f2f2f;
+            color: #aaaaaa;
+            border: 1px solid #3a3a3a;
+        }
 
-            .input-bar input {
-                flex: 1;
-                padding: 0.5rem 0.75rem;
-                background: #1e1e1e;
-                border: 1px solid #555555;
-                color: #cccccc;
-                font-family: monospace;
-                font-size: 0.9rem;
-            }
+        .input-bar {
+            padding: 0.75rem 1.25rem;
+            border-top: 1px solid #3a3a3a;
+            display: flex;
+            gap: 0.5rem;
+        }
 
-            .input-bar input:focus {
-                outline: none;
-                border-color: #888888;
-            }
+        .input-bar input {
+            flex: 1;
+            padding: 0.5rem 0.75rem;
+            background: #1e1e1e;
+            border: 1px solid #555555;
+            color: #cccccc;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
 
-            .input-bar button {
-                padding: 0.5rem 1rem;
-                background: #cccccc;
-                color: #1a1a1a;
-                border: none;
-                font-family: monospace;
-                font-weight: bold;
-                cursor: pointer;
-                font-size: 0.9rem;
-            }
+        .input-bar input:focus {
+            outline: none;
+            border-color: #888888;
+        }
 
-            .input-bar button:hover {
-                background: #e0e0e0;
-            }
+        .input-bar button {
+            padding: 0.5rem 1rem;
+            background: #cccccc;
+            color: #1a1a1a;
+            border: none;
+            font-family: monospace;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
 
-            /* Modal */
-            .modal-overlay {
-                display: none;
-                position: fixed;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.6);
-                justify-content: center;
-                align-items: center;
-                z-index: 10;
-            }
+        .input-bar button:hover {
+            background: #e0e0e0;
+        }
 
-            .modal-overlay.open {
-                display: flex;
-            }
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
 
-            .modal {
-                background: #242424;
-                border: 1px solid #555555;
-                padding: 1.5rem;
-                width: 320px;
-            }
+        .modal-overlay.open {
+            display: flex;
+        }
 
-            .modal h2 {
-                font-size: 1rem;
-                margin-bottom: 1rem;
-            }
+        .modal {
+            background: #242424;
+            border: 1px solid #555555;
+            padding: 1.5rem;
+            width: 320px;
+        }
 
-            .modal input {
-                width: 100%;
-                padding: 0.5rem;
-                background: #2b2b2b;
-                border: 1px solid #555555;
-                color: #cccccc;
-                font-family: monospace;
-                margin-bottom: 0.75rem;
-            }
+        .modal h2 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
 
-            .modal-actions {
-                display: flex;
-                gap: 0.5rem;
-            }
+        .modal input {
+            width: 100%;
+            padding: 0.5rem;
+            background: #2b2b2b;
+            border: 1px solid #555555;
+            color: #cccccc;
+            font-family: monospace;
+            margin-bottom: 0.75rem;
+        }
 
-            .modal-actions button {
-                flex: 1;
-                padding: 0.5rem;
-                font-family: monospace;
-                font-weight: bold;
-                cursor: pointer;
-                border: none;
-                font-size: 0.9rem;
-            }
+        .modal-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
 
-            .btn-confirm {
-                background: #cccccc;
-                color: #1a1a1a;
-            }
+        .modal-actions button {
+            flex: 1;
+            padding: 0.5rem;
+            font-family: monospace;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            font-size: 0.9rem;
+        }
 
-            .btn-confirm:hover {
-                background: #e0e0e0;
-            }
+        .btn-confirm {
+            background: #cccccc;
+            color: #1a1a1a;
+        }
 
-            .btn-cancel {
-                background: #3a3a3a;
-                color: #cccccc;
-            }
+        .btn-confirm:hover {
+            background: #e0e0e0;
+        }
 
-            .btn-cancel:hover {
-                background: #444444;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="sidebar">
-            <div class="sidebar-header">Direct Messages</div>
-            <div class="dm-list" id="dmList"></div>
-            <button class="new-dm-btn" onclick="openModal()">+ New Message</button>
-            <div class="user-bar">
-                <span class="username">{{ user }}</span>
-                <a href="/logout">logout</a>
+        .btn-cancel {
+            background: #3a3a3a;
+            color: #cccccc;
+        }
+
+        .btn-cancel:hover {
+            background: #444444;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">Direct Messages</div>
+        <div class="dm-list" id="dmList"></div>
+        <button class="new-dm-btn" onclick="openModal()">+ New Message</button>
+        <div class="user-bar">
+            <span class="username">{{ user }}</span>
+            <a href="/logout">logout</a>
+        </div>
+    </div>
+
+    <div class="main" id="mainArea">
+        <div class="main-empty">
+            <p>No conversation selected.</p>
+            <span>Start a new message or select one.</span>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h2>Start a conversation</h2>
+            <input type="text" id="targetUsername" placeholder="Username" autocomplete="off" />
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-confirm" onclick="startDm()">Open</button>
             </div>
         </div>
+    </div>
 
-        <div class="main" id="mainArea">
-            <div class="main-empty">
-                <p>No conversation selected.</p>
-                <span>Start a new message or select one.</span>
-            </div>
-        </div>
+    <script>
+        const ME = "{{ user }}";
+        const conversations = {};
+        let activeConv = null;
 
-        <div class="modal-overlay" id="modalOverlay">
-            <div class="modal">
-                <h2>Start a conversation</h2>
-                <input
-                    type="text"
-                    id="targetUsername"
-                    placeholder="Username"
-                    autocomplete="off"
-                />
-                <div class="modal-actions">
-                    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-                    <button class="btn-confirm" onclick="startDm()">Open</button>
-                </div>
-            </div>
-        </div>
-
-        <script>
-            const ME = "{{ user }}";
-            const conversations = {};
-            let activeConv = null;
-
-            function openModal() {
-                document.getElementById("modalOverlay").classList.add("open");
-                document.getElementById("targetUsername").focus();
-            }
-
-            function closeModal() {
-                document.getElementById("modalOverlay").classList.remove("open");
-                document.getElementById("targetUsername").value = "";
-            }
-
-            function startDm() {
-                const name = document.getElementById("targetUsername").value.trim();
-                if (!name) return;
-                if (!conversations[name]) {
-                    conversations[name] = [];
-                    renderDmList();
-                }
-                selectDm(name);
-                closeModal();
-            }
-
-            function renderDmList() {
-                const list = document.getElementById("dmList");
-                list.innerHTML = Object.keys(conversations)
-                    .map(
-                        (name) =>
-                            `<div class="dm-item" onclick="selectDm('${name}')" id="dm-${name}">${name}</div>`
-                    )
-                    .join("");
-            }
-
-            function selectDm(name) {
-                activeConv = name;
-                document.querySelectorAll(".dm-item").forEach((el) => el.classList.remove("active"));
-                const el = document.getElementById(`dm-${name}`);
-                if (el) el.classList.add("active");
-
-                document.getElementById("mainArea").innerHTML = `
-                    <div class="chat-header">Conversation with <strong>${name}</strong></div>
-                    <div class="messages" id="messages"></div>
-                    <div class="input-bar">
-                        <input type="text" id="msgInput" placeholder="Message ${name}..." autocomplete="off" />
-                        <button onclick="sendMessage()">Send</button>
-                    </div>
-                `;
-
-                document.getElementById("msgInput").addEventListener("keydown", (e) => {
-                    if (e.key === "Enter") sendMessage();
-                });
-
-                renderMessages();
-                document.getElementById("msgInput").focus();
-            }
-
-            function sendMessage() {
-                const input = document.getElementById("msgInput");
-                const text = input.value.trim();
-                if (!text || !activeConv) return;
-                conversations[activeConv].push({ author: ME, text });
-                input.value = "";
-                renderMessages();
-            }
-
-            function renderMessages() {
-                const container = document.getElementById("messages");
-                container.innerHTML = conversations[activeConv]
-                    .map(
-                        (msg) => `
-                        <div class="message ${msg.author === ME ? "mine" : "theirs"}">
-                            <span class="message-author">${msg.author}</span>
-                            <div class="message-bubble">${msg.text}</div>
-                        </div>`
-                    )
-                    .join("");
-                container.scrollTop = container.scrollHeight;
-            }
-
-            document.getElementById("modalOverlay").addEventListener("click", function (e) {
-                if (e.target === this) closeModal();
+        async function loadConversations() {
+            const res = await fetch('/conversations');
+            if (!res.ok) return;
+            const contacts = await res.json();
+            contacts.forEach(name => {
+                if (!conversations[name]) conversations[name] = [];
             });
-        </script>
-    </body>
+            renderDmList();
+        }
+
+        function openModal() {
+            document.getElementById("modalOverlay").classList.add("open");
+            document.getElementById("targetUsername").focus();
+        }
+
+        function closeModal() {
+            document.getElementById("modalOverlay").classList.remove("open");
+            document.getElementById("targetUsername").value = "";
+        }
+
+        function startDm() {
+            const name = document.getElementById("targetUsername").value.trim();
+            if (!name) return;
+            if (!conversations[name]) {
+                conversations[name] = [];
+                renderDmList();
+            }
+            selectDm(name);
+            closeModal();
+        }
+
+        function renderDmList() {
+            const list = document.getElementById("dmList");
+            list.innerHTML = Object.keys(conversations)
+                .map(name => `<div class="dm-item" onclick="selectDm('${name}')" id="dm-${name}">${name}</div>`)
+                .join("");
+        }
+
+        function selectDm(name) {
+            activeConv = name;
+            document.querySelectorAll(".dm-item").forEach((el) => el.classList.remove("active"));
+            const el = document.getElementById(`dm-${name}`);
+            if (el) el.classList.add("active");
+
+            document.getElementById("mainArea").innerHTML = `
+        <div class="chat-header">Conversation with <strong>${name}</strong></div>
+        <div class="messages" id="messages"></div>
+        <div class="input-bar">
+            <input type="text" id="msgInput" placeholder="Message ${name}..." autocomplete="off" />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    `;
+
+            document.getElementById("msgInput").addEventListener("keydown", (e) => {
+                if (e.key === "Enter") sendMessage();
+            });
+
+            renderMessages();
+            document.getElementById("msgInput").focus();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById("msgInput");
+            const text = input.value.trim();
+            if (!text || !activeConv) return;
+
+            const users = [ME, activeConv].sort().join("_");
+
+            await fetch("/messages", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    users: users,
+                    author: ME,
+                    text: text
+                })
+            });
+
+            input.value = "";
+            renderMessages();
+        }
+
+        async function renderMessages() {
+            if (!activeConv) return;
+
+            const users = [ME, activeConv].sort().join("_");
+            const res = await fetch(`/messages/${users}?user=${ME}`);
+            if (!res.ok) return;
+
+            const messages = await res.json();
+            const container = document.getElementById("messages");
+            container.innerHTML = messages.map(msg => `
+        <div class="message ${msg.author === ME ? "mine" : "theirs"}">
+            <span class="message-author">${msg.author}</span>
+            <div class="message-bubble">${msg.text}</div>
+        </div>
+    `).join("");
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        document.getElementById("modalOverlay").addEventListener("click", function (e) {
+            if (e.target === this) closeModal();
+        });
+
+        setInterval(() => {
+            loadConversations();
+            renderMessages();
+        }, 2000);
+
+        loadConversations();
+    </script>
+</body>
+
 </html>

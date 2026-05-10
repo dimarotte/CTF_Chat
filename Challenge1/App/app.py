@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, render_template, session, redirect, url_for
+from flask import Flask, jsonify, request, render_template, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -33,7 +33,7 @@ def index():
 def chat():
     if "user" not in session:
         return redirect(url_for("login"))
-    return render_template("chat.html")
+    return render_template("chat.html", user=session["user"])
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -80,6 +80,71 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
+class Message(db.Model):
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    users = db.Column(db.String(100))
+    author = db.Column(db.String(100))
+    text = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+@app.route('/messages', methods=['POST'])
+def send_message():
+    data = request.json
+
+    if not data or 'users' not in data or 'author' not in data or 'text' not in data:
+        return jsonify({"status": "Invalid data"}), 400
+    
+    if session.get('user') != data['author']:
+        return jsonify({"status": "Unauthorized"}), 401
+    
+    if session.get('user') not in data['users'].split("_"):
+        return jsonify({"status": "Unauthorized"}), 401
+
+    msg = Message(
+        users=data['users'],
+        author=data['author'],
+        text=data['text']
+    )
+    db.session.add(msg)
+    db.session.commit()
+    return jsonify({"status": "ok"}) , 200
+
+
+@app.route('/messages/<users>', methods=['GET'])
+def get_messages(users):
+    current_user = request.args.get('user')
+
+    if not current_user:
+        return jsonify({"error": "Non connecté"}), 401
+
+    participants = users.split("_")
+    if current_user not in participants:
+        return jsonify({"error": "Accès refusé"}), 403
+
+    messages = Message.query.filter_by(users=users)\
+                            .order_by(Message.created_at.asc()).all()
+
+    return jsonify([{"author": m.author, "text": m.text} for m in messages])
+
+@app.route('/conversations', methods=['GET'])
+def get_conversations():
+    current_user = session.get('user')
+    if not current_user:
+        return jsonify({"error": "Non connecté"}), 401
+
+    messages = Message.query.filter(
+        Message.users.contains(current_user)
+    ).all()
+
+    contacts = set()
+    for m in messages:
+        if m.author == current_user:
+            contacts.add(next(u for u in m.users.split("_") if u != current_user))
+        else:
+            contacts.add(m.author)
+
+    return jsonify(list(contacts))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
