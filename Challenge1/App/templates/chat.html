@@ -321,7 +321,7 @@
     <script>
         const ME = "{{ user }}";
         const conversations = {};
-        let activeConv = null;
+        let activeReceiver = null;
 
         async function loadConversations() {
             const res = await fetch('/conversations');
@@ -362,7 +362,7 @@
         }
 
         function selectDm(name) {
-            activeConv = name;
+            activeReceiver = name;
             document.querySelectorAll(".dm-item").forEach((el) => el.classList.remove("active"));
             const el = document.getElementById(`dm-${name}`);
             if (el) el.classList.add("active");
@@ -387,16 +387,15 @@
         async function sendMessage() {
             const input = document.getElementById("msgInput");
             const text = input.value.trim();
-            if (!text || !activeConv) return;
+            if (!text || !activeReceiver) return;
 
-            const users = [ME, activeConv].sort().join("_");
+            const users = [ME, activeReceiver].sort().join("_");
 
             await fetch("/messages", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    users: users,
-                    author: ME,
+                    receiver: activeReceiver,
                     text: text
                 })
             });
@@ -406,20 +405,19 @@
         }
 
         async function renderMessages() {
-            if (!activeConv) return;
+            if (!activeReceiver) return;
 
-            const users = [ME, activeConv].sort().join("_");
-            const res = await fetch(`/messages/${users}?user=${ME}`);
+            const res = await fetch(`/messages/${activeReceiver}`);
             if (!res.ok) return;
 
             const messages = await res.json();
             const container = document.getElementById("messages");
             container.innerHTML = messages.map(msg => `
-        <div class="message ${msg.author === ME ? "mine" : "theirs"}">
-            <span class="message-author">${msg.author}</span>
-            <div class="message-bubble">${msg.text}</div>
-        </div>
-    `).join("");
+                <div class="message ${msg.author === ME ? "mine" : "theirs"}">
+                    <span class="message-author">${msg.author}</span>
+                    <div class="message-bubble">${msg.text}</div>
+                </div>
+            `).join("");
 
             container.scrollTop = container.scrollHeight;
         }

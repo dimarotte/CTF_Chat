@@ -83,27 +83,30 @@ def logout():
 class Message(db.Model):
     __tablename__ = 'messages'
     id = db.Column(db.Integer, primary_key=True)
-    users = db.Column(db.String(100))
-    author = db.Column(db.String(100))
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     text = db.Column(db.Text)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
+    author = db.relationship('User', foreign_keys=[author_id])
+    receiver = db.relationship('User', foreign_keys=[receiver_id])
+
 @app.route('/messages', methods=['POST'])
 def send_message():
-    data = request.json
+    current_user = session.get('user')
+    if not current_user:
+        return jsonify({"error": "Non connecté"}), 401
 
-    if not data or 'users' not in data or 'author' not in data or 'text' not in data:
-        return jsonify({"status": "Invalid data"}), 400
-    
-    if session.get('user') != data['author']:
-        return jsonify({"status": "Unauthorized"}), 401
-    
-    if session.get('user') not in data['users'].split("_"):
-        return jsonify({"status": "Unauthorized"}), 401
+    data = request.json
+    receiver = User.query.filter_by(username=data['receiver']).first()
+    if not receiver:
+        return jsonify({"error": "Utilisateur introuvable"}), 404
+
+    author = User.query.filter_by(username=current_user).first()
 
     msg = Message(
-        users=data['users'],
-        author=data['author'],
+        author_id=author.id,
+        receiver_id=receiver.id,
         text=data['text']
     )
     db.session.add(msg)
@@ -111,21 +114,25 @@ def send_message():
     return jsonify({"status": "ok"}) , 200
 
 
-@app.route('/messages/<users>', methods=['GET'])
-def get_messages(users):
-    current_user = request.args.get('user')
-
+@app.route('/messages/<other_username>', methods=['GET'])
+def get_messages(other_username):
+    current_user = session.get('user')
     if not current_user:
         return jsonify({"error": "Non connecté"}), 401
 
-    participants = users.split("_")
-    if current_user not in participants:
-        return jsonify({"error": "Accès refusé"}), 403
+    me = User.query.filter_by(username=current_user).first()
+    other = User.query.filter_by(username=other_username).first()
+    if not other:
+        return jsonify({"error": "Utilisateur introuvable"}), 404
 
-    messages = Message.query.filter_by(users=users)\
-                            .order_by(Message.created_at.asc()).all()
+    messages = Message.query.filter(
+        db.or_(
+            db.and_(Message.author_id == me.id, Message.receiver_id == other.id),
+            db.and_(Message.author_id == other.id, Message.receiver_id == me.id)
+        )
+    ).order_by(Message.id.asc()).all()
 
-    return jsonify([{"author": m.author, "text": m.text} for m in messages])
+    return jsonify([{"author": m.author.username, "text": m.text} for m in messages])
 
 @app.route('/conversations', methods=['GET'])
 def get_conversations():
@@ -133,16 +140,21 @@ def get_conversations():
     if not current_user:
         return jsonify({"error": "Non connecté"}), 401
 
+    me = User.query.filter_by(username=current_user).first()
+
     messages = Message.query.filter(
-        Message.users.contains(current_user)
+        db.or_(
+            Message.author_id == me.id,
+            Message.receiver_id == me.id
+        )
     ).all()
 
     contacts = set()
     for m in messages:
-        if m.author == current_user:
-            contacts.add(next(u for u in m.users.split("_") if u != current_user))
+        if m.author_id == me.id:
+            contacts.add(m.receiver.username)
         else:
-            contacts.add(m.author)
+            contacts.add(m.author.username)
 
     return jsonify(list(contacts))
 

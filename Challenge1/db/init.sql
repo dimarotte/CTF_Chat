@@ -4,10 +4,12 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(64) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS messages (
+CREATE TABLE messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    users VARCHAR(100),
-    author VARCHAR(100),
+    author_id INT NOT NULL,
+    receiver_id INT NOT NULL,
     text TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (author_id) REFERENCES users(id),
+    FOREIGN KEY (receiver_id) REFERENCES users(id)
 );
