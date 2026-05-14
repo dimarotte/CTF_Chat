@@ -161,6 +161,12 @@ def get_conversations():
 
     return jsonify(list(contacts))
 
+@app.route('/admin', methods=['GET'])
+def all_messages():
+    messages = (Message.query.order_by(Message.id.asc()).all())[-10:]
+    messages = reversed(messages)
+    return jsonify([{"author": m.author.username, "text": m.text} for m in messages])
+
 def loop_message_flag():
     with app.app_context():
         Flag = os.getenv("FLAG")
