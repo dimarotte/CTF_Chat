@@ -4,6 +4,9 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(64) NOT NULL
 );
 
+INSERT INTO users (username, password) VALUES ('alice',  UUID());
+INSERT INTO users (username, password) VALUES ('bob',  UUID());
+
 CREATE TABLE messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     author_id INT NOT NULL,
