@@ -167,6 +167,16 @@ def all_messages():
     messages = reversed(messages)
     return jsonify([{"author": m.author.username, "text": m.text} for m in messages])
 
+@app.route('/flag', methods=['POST'])
+def submit_flag():
+    with app.app_context():
+        Flag = os.getenv("FLAG")
+        data = request.json
+        if data.get("flag") == Flag:
+            return jsonify({"status": "correct"})
+        else:
+            return jsonify({"status": "incorrect"})
+
 def loop_message_flag():
     with app.app_context():
         Flag = os.getenv("FLAG")

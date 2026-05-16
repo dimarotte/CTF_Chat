@@ -293,7 +293,8 @@
     <div class="sidebar">
         <div class="sidebar-header">Direct Messages</div>
         <div class="dm-list" id="dmList"></div>
-        <button class="new-dm-btn" onclick="openModal()">+ New Message</button>
+        <button class="new-dm-btn" onclick="openModal('dm')">+ New Message</button>
+        <button class="new-dm-btn" onclick="openModal('flag')">Flag</button>
         <div class="user-bar">
             <span class="username">{{ user }}</span>
             <a href="/logout">logout</a>
@@ -309,11 +310,11 @@
 
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal">
-            <h2>Start a conversation</h2>
-            <input type="text" id="targetUsername" placeholder="Username" autocomplete="off" />
+            <h2></h2>
+            <input type="text" id="targetUsername" placeholder="" autocomplete="off" />
             <div class="modal-actions">
                 <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-                <button class="btn-confirm" onclick="startDm()">Open</button>
+                <button class="btn-confirm" onclick="confirmModal()"></button>
             </div>
         </div>
     </div>
@@ -333,9 +334,25 @@
             renderDmList();
         }
 
-        function openModal() {
+        function openModal(mode) {
+            modalMode = mode;
+
+            const title = document.querySelector(".modal h2");
+            const input = document.getElementById("targetUsername");
+            const btnConfirm = document.querySelector(".btn-confirm");
+
+            if (mode === "dm") {
+                title.textContent = "Start a conversation";
+                input.placeholder = "Username";
+                btnConfirm.textContent = "Open";
+            } else if (mode === "flag") {
+                title.textContent = "What is Flag?";
+                input.placeholder = "Flag value";
+                btnConfirm.textContent = "Submit";
+            }
+
             document.getElementById("modalOverlay").classList.add("open");
-            document.getElementById("targetUsername").focus();
+            input.focus();
         }
 
         function closeModal() {
@@ -343,14 +360,31 @@
             document.getElementById("targetUsername").value = "";
         }
 
-        function startDm() {
-            const name = document.getElementById("targetUsername").value.trim();
-            if (!name) return;
-            if (!conversations[name]) {
-                conversations[name] = [];
-                renderDmList();
+        async function confirmModal() {
+            const value = document.getElementById("targetUsername").value.trim();
+            if (!value) return;
+            if (modalMode === "dm") {
+                if (!conversations[value]) {
+                    conversations[value] = [];
+                    renderDmList();
+                }
+                selectDm(value);
             }
-            selectDm(name);
+
+            if (modalMode === "flag") {
+                const res = await fetch("/flag", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ flag: value })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    alert(data.status === "correct" ? "Congratulations !" : "Incorrect flag");
+                } else {
+                    alert("Error submitting flag.");
+                }
+            }
             closeModal();
         }
 
