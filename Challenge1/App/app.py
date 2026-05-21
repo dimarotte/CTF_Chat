@@ -1,7 +1,7 @@
 import os
 import time
 import threading
-from enum import Enum
+from enum import StrEnum
 from flask import Flask, jsonify, request, render_template, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 
@@ -18,7 +18,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 
-class Err(str, Enum):
+class Err(StrEnum):
     NOT_CONNECTED = "Not connected"
     USER_NOT_FOUND = "User not found"
     PASSWORDS_MISMATCH = "Passwords do not match."
