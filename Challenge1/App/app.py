@@ -3,7 +3,6 @@ import time
 import threading
 from flask import Flask, jsonify, request, render_template, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -98,12 +97,12 @@ class Message(db.Model):
 def send_message():
     current_user = session.get('user')
     if not current_user:
-        return jsonify({"error": "Non connecté"}), 401
+        return jsonify({"error": "Not connected"}), 401
 
     data = request.json
     receiver = User.query.filter_by(username=data['receiver']).first()
     if not receiver:
-        return jsonify({"error": "Utilisateur introuvable"}), 404
+        return jsonify({"error": "Unknown user"}), 404
 
     author = User.query.filter_by(username=current_user).first()
 
@@ -121,12 +120,12 @@ def send_message():
 def get_messages(other_username):
     current_user = session.get('user')
     if not current_user:
-        return jsonify({"error": "Non connecté"}), 401
+        return jsonify({"error": "Not connected"}), 401
 
     me = User.query.filter_by(username=current_user).first()
     other = User.query.filter_by(username=other_username).first()
     if not other:
-        return jsonify({"error": "Utilisateur introuvable"}), 404
+        return jsonify({"error": "Unknown user"}), 404
 
     messages = Message.query.filter(
         db.or_(
@@ -141,7 +140,7 @@ def get_messages(other_username):
 def get_conversations():
     current_user = session.get('user')
     if not current_user:
-        return jsonify({"error": "Non connecté"}), 401
+        return jsonify({"error": "Not connected"}), 401
 
     me = User.query.filter_by(username=current_user).first()
 
@@ -160,6 +159,15 @@ def get_conversations():
             contacts.add(m.author.username)
 
     return jsonify(list(contacts))
+
+@app.route('/users/<username>', methods=['GET'])
+def check_user(username):
+    if not session.get('user'):
+        return jsonify({"error": "Not connected"}), 401
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    return jsonify({"username": user.username}), 200
 
 @app.route('/admin', methods=['GET'])
 def all_messages():
@@ -193,16 +201,6 @@ def loop_message_flag():
             db.session.commit()
             time.sleep(1)
 
-def wait_for_db():
-    with app.app_context():
-        while True:
-            try:
-                db.session.execute(text("SELECT 1"))
-                break
-            except Exception as e:
-                time.sleep(2)
-
 if __name__ == "__main__":
-    wait_for_db()
     threading.Thread(target=loop_message_flag, daemon=True).start()
     app.run(host="0.0.0.0", port=5000, debug=True)

@@ -1,6 +1,6 @@
 services:
   app:
-    build: ./app
+    build: ./App
     ports:
       - "5001:5000"
     environment:
@@ -9,14 +9,21 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - FLASK_ENV=development
     volumes:
-      - ./app:/app
+      - ./App:/app
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   db:
-    image: mysql:8.0      
+    image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: ctf_chat
     volumes:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s

@@ -2,6 +2,32 @@ const conversations = {};
 let activeReceiver = null;
 let modalMode = null;
 
+function showModalError(msg) {
+    clearModalSuccess();
+    const el = document.getElementById("modalError");
+    el.textContent = msg;
+    el.classList.add("visible");
+}
+
+function clearModalError() {
+    const el = document.getElementById("modalError");
+    el.textContent = "";
+    el.classList.remove("visible");
+}
+
+function showModalSuccess(msg) {
+    clearModalError();
+    const el = document.getElementById("modalSuccess");
+    el.textContent = msg;
+    el.classList.add("visible");
+}
+
+function clearModalSuccess() {
+    const el = document.getElementById("modalSuccess");
+    el.textContent = "";
+    el.classList.remove("visible");
+}
+
 async function loadConversations() {
     const res = await fetch('/conversations');
     if (!res.ok) return;
@@ -29,6 +55,8 @@ function openModal(mode) {
         btnConfirm.textContent = "Submit";
     }
 
+    clearModalError();
+    clearModalSuccess();
     document.getElementById("modalOverlay").classList.add("open");
     input.focus();
 }
@@ -36,6 +64,8 @@ function openModal(mode) {
 function closeModal() {
     document.getElementById("modalOverlay").classList.remove("open");
     document.getElementById("targetUsername").value = "";
+    clearModalError();
+    clearModalSuccess();
 }
 
 async function confirmModal() {
@@ -43,10 +73,16 @@ async function confirmModal() {
     if (!value) return;
 
     if (modalMode === "dm") {
+        const res = await fetch(`/users/${encodeURIComponent(value)}`);
+        if (!res.ok) {
+            showModalError(`User "${value}" does not exist.`);
+            return;
+        }
         if (!conversations[value]) {
             conversations[value] = [];
             renderDmList();
         }
+        closeModal();
         selectDm(value);
     }
 
@@ -59,13 +95,15 @@ async function confirmModal() {
 
         if (res.ok) {
             const data = await res.json();
-            alert(data.status === "correct" ? "Congratulations !" : "Incorrect flag");
+            if (data.status === "correct") {
+                showModalSuccess("Congratulations!");
+            } else {
+                showModalError("Incorrect flag.");
+            }
         } else {
-            alert("Error submitting flag.");
+            showModalError("Error submitting flag.");
         }
     }
-
-    closeModal();
 }
 
 function renderDmList() {
