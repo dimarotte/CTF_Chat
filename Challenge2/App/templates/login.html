@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Login</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+    </head>
+    <body>
+        <div class="card">
+            <h1>LOGIN</h1>
+            {% if error %}
+            <div class="error">{{ error }}</div>
+            {% endif %}
+            <form method="POST">
+                <label for="username">Username</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    autocomplete="off"
+                    required
+                />
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required />
+                <button type="submit">Connect</button>
+            </form>
+            <a class="link" href="{{ url_for('register') }}">No account? Register</a>
+        </div>
+    </body>
+</html>

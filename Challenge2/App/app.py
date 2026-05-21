@@ -1,0 +1,230 @@
+import os
+import time
+import base64
+import threading
+from enum import Enum
+from flask import Flask, jsonify, request, render_template, session, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.secret_key = os.urandom(24)
+
+db_host = os.environ.get("DB_HOST", "localhost")
+db_pass = os.environ.get("DB_PASSWORD", "root")
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    f"mysql+mysqlconnector://root:{db_pass}@{db_host}/ctf_chat"
+)
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
+
+
+class Err(str, Enum):
+    NOT_CONNECTED = "Not connected"
+    USER_NOT_FOUND = "User not found"
+    PASSWORDS_MISMATCH = "Passwords do not match."
+    USERNAME_TAKEN = "Username already taken."
+    INVALID_CREDENTIALS = "Invalid username or password."
+
+
+class User(db.Model):
+    __tablename__ = "users"
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), nullable=False)
+    password = db.Column(db.String(64), nullable=False)
+
+
+class Message(db.Model):
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    text = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    author = db.relationship('User', foreign_keys=[author_id])
+    receiver = db.relationship('User', foreign_keys=[receiver_id])
+
+
+@app.route("/")
+def index():
+    if "user" in session:
+        return redirect(url_for("chat"))
+    return redirect(url_for("login"))
+
+
+@app.route("/chat")
+def chat():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    return render_template("chat.html", user=session["user"])
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+
+        user = User.query.filter_by(username=username, password=password).first()
+
+        if user:
+            session["user"] = user.username
+            return redirect(url_for("chat"))
+        else:
+            error = Err.INVALID_CREDENTIALS
+
+    return render_template("login.html", error=error)
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm", "")
+
+        if password != confirm:
+            error = Err.PASSWORDS_MISMATCH
+        elif User.query.filter_by(username=username).first():
+            error = Err.USERNAME_TAKEN
+        else:
+            db.session.add(User(username=username, password=password))
+            db.session.commit()
+            session["user"] = username
+            return redirect(url_for("chat"))
+
+    return render_template("register.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+@app.route('/messages', methods=['POST'])
+def send_message():
+    current_user = session.get('user')
+    if not current_user:
+        return jsonify({"error": Err.NOT_CONNECTED}), 401
+
+    data = request.json
+    receiver = User.query.filter_by(username=data['receiver']).first()
+    if not receiver:
+        return jsonify({"error": Err.USER_NOT_FOUND}), 404
+
+    author = User.query.filter_by(username=current_user).first()
+
+    msg = Message(
+        author_id=author.id,
+        receiver_id=receiver.id,
+        text=data['text']
+    )
+    db.session.add(msg)
+    db.session.commit()
+    return jsonify({"status": "ok"}) , 200
+
+
+@app.route('/messages/<other_username>', methods=['GET'])
+def get_messages(other_username):
+    current_user = session.get('user')
+    if not current_user:
+        return jsonify({"error": Err.NOT_CONNECTED}), 401
+
+    me = User.query.filter_by(username=current_user).first()
+    other = User.query.filter_by(username=other_username).first()
+    if not other:
+        return jsonify({"error": Err.USER_NOT_FOUND}), 404
+
+    messages = Message.query.filter(
+        db.or_(
+            db.and_(Message.author_id == me.id, Message.receiver_id == other.id),
+            db.and_(Message.author_id == other.id, Message.receiver_id == me.id)
+        )
+    ).order_by(Message.id.asc()).all()
+
+    return jsonify([{"author": m.author.username, "text": m.text} for m in messages])
+
+
+@app.route('/conversations', methods=['GET'])
+def get_conversations():
+    current_user = session.get('user')
+    if not current_user:
+        return jsonify({"error": Err.NOT_CONNECTED}), 401
+
+    me = User.query.filter_by(username=current_user).first()
+
+    messages = Message.query.filter(
+        db.or_(
+            Message.author_id == me.id,
+            Message.receiver_id == me.id
+        )
+    ).all()
+
+    contacts = set()
+    for m in messages:
+        if m.author_id == me.id:
+            contacts.add(m.receiver.username)
+        else:
+            contacts.add(m.author.username)
+
+    return jsonify(list(contacts))
+
+
+@app.route('/users/<username>', methods=['GET'])
+def check_user(username):
+    if not session.get('user'):
+        return jsonify({"error": Err.NOT_CONNECTED}), 401
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({"error": Err.USER_NOT_FOUND}), 404
+    return jsonify({"username": user.username}), 200
+
+
+@app.route('/admin', methods=['GET'])
+def all_messages():
+    messages = (Message.query.order_by(Message.id.asc()).all())[-10:]
+    messages = reversed(messages)
+    return jsonify([
+        {
+            "author": m.author.username,
+            "text": base64.b64encode(m.text.encode()).decode()
+        }
+        for m in messages
+    ])
+
+
+@app.route('/flag', methods=['POST'])
+def submit_flag():
+    with app.app_context():
+        Flag = os.getenv("FLAG")
+        data = request.json
+        if data.get("flag") == Flag:
+            return jsonify({"status": "correct"})
+        else:
+            return jsonify({"status": "incorrect"})
+
+
+def loop_message_flag():
+    with app.app_context():
+        Flag = os.getenv("FLAG")
+        author = User.query.filter_by(username="alice").first()
+        receiver = User.query.filter_by(username="bob").first()
+
+        while True:
+            msg = Message(
+                author_id=author.id,
+                receiver_id=receiver.id,
+                text="Hello Bob, the flag is " + Flag
+            )
+            db.session.add(msg)
+            db.session.commit()
+            time.sleep(1)
+
+
+if __name__ == "__main__":
+    threading.Thread(target=loop_message_flag, daemon=True).start()
+    app.run(host="0.0.0.0", port=5000, debug=True)
