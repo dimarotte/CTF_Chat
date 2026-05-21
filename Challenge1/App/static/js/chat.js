@@ -1,3 +1,9 @@
+const Err = Object.freeze({
+    USER_NOT_FOUND: "User not found.",
+    INCORRECT_FLAG:  "Incorrect flag.",
+    FLAG_ERROR:      "Error submitting flag.",
+});
+
 const conversations = {};
 let activeReceiver = null;
 let modalMode = null;
@@ -75,7 +81,7 @@ async function confirmModal() {
     if (modalMode === "dm") {
         const res = await fetch(`/users/${encodeURIComponent(value)}`);
         if (!res.ok) {
-            showModalError(`User "${value}" does not exist.`);
+            showModalError(`"${value}": ${Err.USER_NOT_FOUND}`);
             return;
         }
         if (!conversations[value]) {
@@ -98,10 +104,10 @@ async function confirmModal() {
             if (data.status === "correct") {
                 showModalSuccess("Congratulations!");
             } else {
-                showModalError("Incorrect flag.");
+                showModalError(Err.INCORRECT_FLAG);
             }
         } else {
-            showModalError("Error submitting flag.");
+            showModalError(Err.FLAG_ERROR);
         }
     }
 }

@@ -1,6 +1,7 @@
 import os
 import time
 import threading
+from enum import Enum
 from flask import Flask, jsonify, request, render_template, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 
@@ -17,11 +18,31 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 
+class Err(str, Enum):
+    NOT_CONNECTED = "Not connected"
+    USER_NOT_FOUND = "User not found"
+    PASSWORDS_MISMATCH = "Passwords do not match."
+    USERNAME_TAKEN = "Username already taken."
+    INVALID_CREDENTIALS = "Invalid username or password."
+
+
 class User(db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), nullable=False)
     password = db.Column(db.String(64), nullable=False)
+
+
+class Message(db.Model):
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    text = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    author = db.relationship('User', foreign_keys=[author_id])
+    receiver = db.relationship('User', foreign_keys=[receiver_id])
 
 
 @app.route("/")
@@ -51,7 +72,7 @@ def login():
             session["user"] = user.username
             return redirect(url_for("chat"))
         else:
-            error = "Invalid username or password."
+            error = Err.INVALID_CREDENTIALS
 
     return render_template("login.html", error=error)
 
@@ -65,9 +86,9 @@ def register():
         confirm = request.form.get("confirm", "")
 
         if password != confirm:
-            error = "Passwords do not match."
+            error = Err.PASSWORDS_MISMATCH
         elif User.query.filter_by(username=username).first():
-            error = "Username already taken."
+            error = Err.USERNAME_TAKEN
         else:
             db.session.add(User(username=username, password=password))
             db.session.commit()
@@ -82,27 +103,17 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
-class Message(db.Model):
-    __tablename__ = 'messages'
-    id = db.Column(db.Integer, primary_key=True)
-    author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    text = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
-
-    author = db.relationship('User', foreign_keys=[author_id])
-    receiver = db.relationship('User', foreign_keys=[receiver_id])
 
 @app.route('/messages', methods=['POST'])
 def send_message():
     current_user = session.get('user')
     if not current_user:
-        return jsonify({"error": "Not connected"}), 401
+        return jsonify({"error": Err.NOT_CONNECTED}), 401
 
     data = request.json
     receiver = User.query.filter_by(username=data['receiver']).first()
     if not receiver:
-        return jsonify({"error": "Unknown user"}), 404
+        return jsonify({"error": Err.USER_NOT_FOUND}), 404
 
     author = User.query.filter_by(username=current_user).first()
 
@@ -120,12 +131,12 @@ def send_message():
 def get_messages(other_username):
     current_user = session.get('user')
     if not current_user:
-        return jsonify({"error": "Not connected"}), 401
+        return jsonify({"error": Err.NOT_CONNECTED}), 401
 
     me = User.query.filter_by(username=current_user).first()
     other = User.query.filter_by(username=other_username).first()
     if not other:
-        return jsonify({"error": "Unknown user"}), 404
+        return jsonify({"error": Err.USER_NOT_FOUND}), 404
 
     messages = Message.query.filter(
         db.or_(
@@ -136,11 +147,12 @@ def get_messages(other_username):
 
     return jsonify([{"author": m.author.username, "text": m.text} for m in messages])
 
+
 @app.route('/conversations', methods=['GET'])
 def get_conversations():
     current_user = session.get('user')
     if not current_user:
-        return jsonify({"error": "Not connected"}), 401
+        return jsonify({"error": Err.NOT_CONNECTED}), 401
 
     me = User.query.filter_by(username=current_user).first()
 
@@ -160,20 +172,23 @@ def get_conversations():
 
     return jsonify(list(contacts))
 
+
 @app.route('/users/<username>', methods=['GET'])
 def check_user(username):
     if not session.get('user'):
-        return jsonify({"error": "Not connected"}), 401
+        return jsonify({"error": Err.NOT_CONNECTED}), 401
     user = User.query.filter_by(username=username).first()
     if not user:
-        return jsonify({"error": "User not found"}), 404
+        return jsonify({"error": Err.USER_NOT_FOUND}), 404
     return jsonify({"username": user.username}), 200
+
 
 @app.route('/admin', methods=['GET'])
 def all_messages():
     messages = (Message.query.order_by(Message.id.asc()).all())[-10:]
     messages = reversed(messages)
     return jsonify([{"author": m.author.username, "text": m.text} for m in messages])
+
 
 @app.route('/flag', methods=['POST'])
 def submit_flag():
@@ -184,6 +199,7 @@ def submit_flag():
             return jsonify({"status": "correct"})
         else:
             return jsonify({"status": "incorrect"})
+
 
 def loop_message_flag():
     with app.app_context():
@@ -200,6 +216,7 @@ def loop_message_flag():
             db.session.add(msg)
             db.session.commit()
             time.sleep(1)
+
 
 if __name__ == "__main__":
     threading.Thread(target=loop_message_flag, daemon=True).start()
