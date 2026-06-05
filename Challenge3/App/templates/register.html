@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Register</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+    </head>
+    <body>
+        <div class="card">
+            <h1>REGISTER</h1>
+            {% if error %}
+            <div class="error">{{ error }}</div>
+            {% endif %}
+            <form method="POST">
+                <label for="username">Username</label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    autocomplete="off"
+                    required
+                />
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required />
+                <label for="confirm">Confirm password</label>
+                <input type="password" id="confirm" name="confirm" required />
+                <button type="submit">Register</button>
+            </form>
+            <a class="link" href="{{ url_for('login') }}">Already have an account? Login</a>
+        </div>
+    </body>
+</html>
