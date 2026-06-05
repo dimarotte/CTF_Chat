@@ -4,6 +4,7 @@ import threading
 from enum import StrEnum
 from flask import Flask, jsonify, request, render_template, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -217,7 +218,16 @@ def loop_message_flag():
             db.session.commit()
             time.sleep(1)
 
+def wait_for_db():
+    with app.app_context():
+        while True:
+            try:
+                db.session.execute(text("SELECT 1"))
+                break
+            except Exception as e:
+                time.sleep(2)
 
 if __name__ == "__main__":
+    wait_for_db()
     threading.Thread(target=loop_message_flag, daemon=True).start()
     app.run(host="0.0.0.0", port=5000, debug=True)
