@@ -1,10 +1,14 @@
 import os
 import time
+import base64
 import threading
 from enum import StrEnum
 from flask import Flask, jsonify, request, render_template, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from Crypto import Random
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -183,26 +187,42 @@ def check_user(username):
         return jsonify({"error": Err.USER_NOT_FOUND}), 404
     return jsonify({"username": user.username}), 200
 
-def xor_encrypt(text, key):
-    encrypted = ""
-    for i in range(len(text)):
-        encrypted += format(ord(text[i]) ^ ord(key[i % len(key)]), "02x")
-    return encrypted
-
+def AES_encrypt(plain_text, key):
+    cipher = AES.new(key, AES.MODE_CBC)
+    b = pad(plain_text.encode("UTF-8", "ignore"), AES.block_size)
+    return base64.b64encode(cipher.iv + cipher.encrypt(b)).decode("utf-8")
 
 @app.route('/admin', methods=['GET'])
 def all_messages():
-    key = os.getenv("XOR_KEY")
+    key = os.getenv("AES_KEY").encode()
     messages = (Message.query.order_by(Message.id.asc()).all())[-10:]
     messages = reversed(messages)
     return jsonify([
         {
             "author": m.author.username,
-            "text": xor_encrypt(m.text, key)
+            "text": AES_encrypt(m.text, key)
         }
         for m in messages
     ])
 
+def padding_oracle(cipher_text, key):
+    cipher_text = base64.b64decode(cipher_text)
+    iv = cipher_text[:AES.block_size]
+    ciphertext = cipher_text[AES.block_size:]
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    try:
+        unpad(cipher.decrypt(ciphertext), AES.block_size)
+        return True
+    except ValueError:
+        return False
+
+@app.route('/oracle', methods=['POST'])
+def oracle():
+    data = request.json
+    cipher_text = data.get("cipher_text")
+    key = os.getenv("AES_KEY").encode()
+    is_valid = padding_oracle(cipher_text, key)
+    return jsonify({"valid": is_valid})
 
 @app.route('/flag', methods=['POST'])
 def submit_flag():
